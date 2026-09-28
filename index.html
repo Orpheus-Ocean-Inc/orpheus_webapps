@@ -36,52 +36,69 @@
     display: flex; align-items: center; justify-content: center;
     font-weight: 900; font-size: 18px; flex-shrink: 0;
   }
-  header h1 { font-size: 20px; font-weight: 700; }
+  header h1 { font-size: 20px; font-weight: 700; letter-spacing: .02em; }
   header p  { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
-  main { flex: 1; width: 100%; max-width: 760px; margin: 0 auto; padding: 32px 24px 56px; }
+  main { flex: 1; width: 100%; max-width: 860px; margin: 0 auto; padding: 32px 24px 64px; }
 
-  /* The hub is the usual starting point, so it gets the one prominent block */
-  .start {
-    display: block; text-decoration: none; color: var(--text);
+  .section-label {
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+
+  .card {
     background: var(--surface);
-    border: 1px solid var(--border); border-left: 4px solid var(--accent);
+    border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 22px 24px; margin-bottom: 36px;
+    padding: 18px 20px;
+    text-decoration: none; color: var(--text);
+    display: flex; flex-direction: column; gap: 6px;
+    position: relative; overflow: hidden;
+    transition: border-color .15s, background .15s, transform .1s;
   }
-  .start:hover { background: var(--raised); border-color: var(--accent); }
-  .start h2 { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
-  .start p  { color: var(--muted); font-size: 14px; max-width: 60ch; }
-  .start .go { display: inline-block; margin-top: 12px; color: var(--accent); font-weight: 600; font-size: 14px; }
-
-  h3 { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
-
-  /* Other tools as a plain list: a directory, not a gallery */
-  .apps { list-style: none; border-top: 1px solid var(--border); }
-  .apps li { border-bottom: 1px solid var(--border); }
-  .app {
-    display: flex; justify-content: space-between; align-items: baseline;
-    gap: 16px; padding: 16px 4px;
+  .card:hover { border-color: var(--accent); background: var(--raised); transform: translateY(-1px); }
+  .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .card::after {
+    content: '→';
+    position: absolute; right: 18px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--border); font-size: 18px;
+    transition: color .15s, right .15s;
   }
-  .app a.name { color: var(--text); font-weight: 600; text-decoration: none; }
-  .app a.name:hover { color: var(--accent); }
-  .app p { color: var(--muted); font-size: 13px; margin-top: 2px; max-width: 52ch; }
-  .app .extra { font-size: 13px; white-space: nowrap; }
-  .app .extra a { color: var(--muted); }
-  .app .extra a:hover { color: var(--accent); }
+  .card:hover::after { color: var(--accent); right: 14px; }
 
-  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+  .tag {
+    font-size: 10px; font-weight: 700; letter-spacing: .06em;
+    display: inline-block; width: fit-content;
+    padding: 2px 8px; border-radius: 20px; margin-bottom: 2px;
+  }
+  .tag-ops    { background: #3a1f10; color: var(--accent); }
+  .tag-survey { background: #10182e; color: #7ab0f5; }
+  .tag-tides  { background: #0f2e1a; color: #3dba72; }
+  .tag-nav    { background: #1e1a2e; color: #b07af5; }
+
+  .card-title { font-size: 15px; font-weight: 600; padding-right: 28px; }
+  .card-desc  { font-size: 12px; color: var(--muted); line-height: 1.45; padding-right: 28px; }
 
   footer {
     text-align: center; font-size: 12px; color: var(--muted);
-    padding: 20px; border-top: 1px solid var(--border);
+    padding: 24px; border-top: 1px solid var(--border);
   }
 
   @media (max-width: 600px) {
     header { padding: 16px 20px; gap: 14px; }
     header h1 { font-size: 17px; }
-    main { padding: 24px 16px 40px; }
-    .app { flex-direction: column; gap: 4px; }
+    main { padding: 24px 16px 48px; }
+    .cards { grid-template-columns: 1fr; }
+    .card { padding: 16px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card, .card::after { transition: none; }
+    .card:hover { transform: none; }
   }
 </style>
 </head>
@@ -96,36 +113,34 @@
 </header>
 
 <main>
+  <div class="section-label">Web apps</div>
+  <div class="cards">
 
-  <a class="start" href="orpheus_hub/">
-    <h2>Operations Hub</h2>
-    <p>Dive checklists, test logging and test plans. Start here before every dive.</p>
-    <span class="go">Open the hub</span>
-  </a>
+    <a class="card" href="orpheus_hub/">
+      <span class="tag tag-ops">Operations</span>
+      <span class="card-title">Operations Hub</span>
+      <span class="card-desc">Dive checklists, test logging and test plans. Start here before every dive.</span>
+    </a>
 
-  <h3>Planning tools</h3>
-  <ul class="apps">
-    <li class="app">
-      <div>
-        <a class="name" href="survery_calculator/">Survey Mission Calculator</a>
-        <p>Footprint, GSD, overlap, trigger timing and lawnmower mission sizing for underwater photogrammetry.</p>
-      </div>
-    </li>
-    <li class="app">
-      <div>
-        <a class="name" href="plymouth_tide_tracker/">Plymouth Tide Tracker</a>
-        <p>Live and forecast tides for Plymouth, for timing dives.</p>
-      </div>
-      <span class="extra"><a href="plymouth_tide_tracker/week.html">Week view</a></span>
-    </li>
-    <li class="app">
-      <div>
-        <a class="name" href="waypoint_selector/">Waypoint Selector</a>
-        <p>Choose waypoints for vehicle missions.</p>
-      </div>
-    </li>
-  </ul>
+    <a class="card" href="survery_calculator/">
+      <span class="tag tag-survey">Survey</span>
+      <span class="card-title">Survey Mission Calculator</span>
+      <span class="card-desc">Footprint, GSD, overlap, trigger timing and lawnmower mission sizing.</span>
+    </a>
 
+    <a class="card" href="plymouth_tide_tracker/">
+      <span class="tag tag-tides">Tides</span>
+      <span class="card-title">Plymouth Tide Tracker</span>
+      <span class="card-desc">Live and forecast tides for Plymouth, for timing dives. Includes a week view.</span>
+    </a>
+
+    <a class="card" href="waypoint_selector/">
+      <span class="tag tag-nav">Navigation</span>
+      <span class="card-title">Waypoint Selector</span>
+      <span class="card-desc">Choose waypoints for vehicle missions.</span>
+    </a>
+
+  </div>
 </main>
 
 <footer>Orpheus Ocean</footer>
