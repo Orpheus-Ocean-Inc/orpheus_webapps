@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Waypoint selector</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+
+  <style>
+    :root {
+      --bg: #eef2f4;
+      --panel: #ffffff;
+      --ink: #14212b;
+      --muted: #566873;
+      --line: #d3dde3;
+      --accent: #0b6e8a;
+      --accent-ink: #ffffff;
+      --field: #f6f9fa;
+      --danger: #b3261e;
+      --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0e1418;
+        --panel: #162026;
+        --ink: #e5edf1;
+        --muted: #93a5af;
+        --line: #2a3a43;
+        --accent: #4cc2e0;
+        --accent-ink: #06222b;
+        --field: #0f181d;
+        --danger: #ff8a80;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--ink);
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      overflow: hidden;
+    }
+
+    #map { height: 100%; width: 100%; cursor: crosshair; background: var(--bg); }
+
+    /* ---------- side panel ---------- */
+    aside {
+      background: var(--panel);
+      border-left: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 18px;
+      gap: 14px;
+      overflow-y: auto;
+    }
+    h1 { font-size: 1.15rem; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+    .hint { margin: 4px 0 0; color: var(--muted); font-size: 0.875rem; line-height: 1.45; }
+
+    .count { display: flex; align-items: baseline; justify-content: space-between; }
+    .count strong { font-size: 0.95rem; font-weight: 600; }
+    .count span { color: var(--muted); font-size: 0.85rem; }
+
+    #output {
+      flex: 1 1 auto;
+      min-height: 120px;
+      width: 100%;
+      resize: none;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: var(--ink);
+      background: var(--field);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 12px;
+      white-space: pre;
+      overflow: auto;
+    }
+    #output:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    .dist-list {
+      max-height: 160px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--field);
+    }
+    .dist-row {
+      display: grid;
+      grid-template-columns: 22px 1fr auto;
+      gap: 8px;
+      align-items: baseline;
+      padding: 6px 10px;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .dist-row:last-child { border-bottom: none; }
+    .dist-num { color: var(--muted); }
+    .dist-coord { color: var(--ink); }
+    .dist-seg { color: var(--accent); white-space: nowrap; }
+    .dist-empty { margin: 0; padding: 10px 12px; color: var(--muted); font-size: 0.8rem; }
+
+    .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    button {
+      font: inherit;
+      font-size: 0.875rem;
+      padding: 9px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { border-color: var(--accent); }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    button:disabled { opacity: 0.45; cursor: default; }
+    button.primary {
+      grid-column: 1 / -1;
+      background: var(--accent);
+      color: var(--accent-ink);
+      border-color: var(--accent);
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 11px 12px;
+    }
+    button.wide { grid-column: 1 / -1; }
+    button.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+
+    /* ---------- start location section ---------- */
+    details { border-top: 1px solid var(--line); padding-top: 12px; }
+    summary { cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+    summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+    .start-body { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+    #startCoords { font-family: var(--mono); font-size: 0.85rem; margin: 0; word-break: break-all; }
+    #startMeta { margin: 2px 0 0; color: var(--muted); font-size: 0.8rem; line-height: 1.4; }
+    .start-body > button { width: 100%; }
+
+    /* ---------- coordinate inputs (start-by-coordinates, bbox spacing) ---------- */
+    .coord-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .field { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--muted); }
+    .field input {
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--field);
+      color: var(--ink);
+      width: 100%;
+    }
+    .field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .actions-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    #bboxInfo, #gridEstimate { margin: 0; color: var(--muted); font-size: 0.8rem; line-height: 1.4; }
+
+    .paste-area {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--field);
+      color: var(--ink);
+      resize: vertical;
+      width: 100%;
+      min-height: 80px;
+    }
+    .paste-area:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    #loadFileInfo { margin: 0; color: var(--muted); font-size: 0.8rem; line-height: 1.4; }
+
+    /* ---------- map pins ---------- */
+    .pin {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--accent-ink);
+      border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.45);
+      display: grid; place-items: center;
+      font: 600 12px/1 var(--sans);
+      cursor: grab;
+    }
+    .leaflet-marker-draggable:active .pin { cursor: grabbing; }
+    .popup-body { font-family: var(--mono); font-size: 12px; line-height: 1.5; }
+    .popup-body button { margin-top: 8px; width: 100%; font-size: 12px; padding: 6px 8px; }
+
+    /* ---------- narrow screens: map on top, panel below ---------- */
+    @media (max-width: 800px) {
+      body { grid-template-columns: 1fr; grid-template-rows: 55% 45%; }
+      aside { border-left: 0; border-top: 1px solid var(--line); padding: 14px; gap: 10px; }
+      .hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="map" aria-label="Map"></div>
+
+  <aside>
+    <div>
+      <h1>Waypoint selector</h1>
+      <p class="hint">Click the map to add a waypoint. Drag a pin to adjust it. Click a pin to delete it.</p>
+    </div>
+
+    <div class="count">
+      <strong id="count">0 waypoints</strong>
+      <span>lat, lon</span>
+    </div>
+
+    <textarea id="output" readonly spellcheck="false"
+              aria-label="Waypoint coordinates"
+              placeholder="Waypoints will appear here as you click the map."></textarea>
+
+    <div class="count">
+      <strong>Distance between waypoints</strong>
+      <span id="totalDistance"></span>
+    </div>
+    <div id="distanceList" class="dist-list" aria-label="Distance between consecutive waypoints">
+      <p class="dist-empty">Add waypoints to see distances.</p>
+    </div>
+
+    <div class="actions">
+      <button id="copy" class="primary" disabled>Copy coordinates</button>
+      <button id="download" disabled>Download</button>
+      <button id="undo" disabled>Undo last</button>
+      <button id="clear" class="danger" disabled>Clear all</button>
+    </div>
+
+    <details id="startBox">
+      <summary>Start location</summary>
+      <div class="start-body">
+        <div>
+          <p id="startCoords"></p>
+          <p id="startMeta"></p>
+        </div>
+        <div class="actions">
+          <button id="setStart" class="primary">Set start to current view</button>
+          <button id="goStart">Go to start</button>
+          <button id="copyLink">Copy link</button>
+          <button id="useDefault">Use default</button>
+        </div>
+        <div class="coord-row">
+          <label class="field">
+            <span>Latitude</span>
+            <input type="number" id="startLatInput" step="any" min="-90" max="90" placeholder="e.g. 40.7128">
+          </label>
+          <label class="field">
+            <span>Longitude</span>
+            <input type="number" id="startLonInput" step="any" min="-180" max="180" placeholder="e.g. -74.0060">
+          </label>
+        </div>
+        <button id="setStartCoords">Set start from coordinates</button>
+      </div>
+    </details>
+
+    <details id="bboxBox">
+      <summary>Bounding box grid</summary>
+      <div class="start-body">
+        <p class="hint" style="margin:0;">Click "Draw bounding box", then click and drag on the map to mark opposite corners. Waypoints generate in a lawn-mower (back-and-forth) path.</p>
+        <button id="drawBbox">Draw bounding box</button>
+        <p id="bboxInfo">No box drawn yet.</p>
+        <label class="field">
+          <span>Spacing between waypoints (meters)</span>
+          <input type="number" id="spacing" step="any" min="1" value="50">
+        </label>
+        <p id="gridEstimate"></p>
+        <div class="actions-2">
+          <button id="generateGrid" class="primary" disabled>Generate grid</button>
+          <button id="clearBbox" class="danger" disabled>Clear box</button>
+        </div>
+      </div>
+    </details>
+
+    <details id="loadBox">
+      <summary>Load waypoints</summary>
+      <div class="start-body">
+        <p class="hint" style="margin:0;">Load a downloaded .txt file, or paste coordinates below — one "lat, lon" pair per line. Loading a file replaces your current waypoints; pasting adds to them.</p>
+        <input type="file" id="fileInput" accept=".txt,text/plain" style="display:none;">
+        <button id="loadFileBtn">Load from file</button>
+        <p id="loadFileInfo"></p>
+        <textarea id="pasteArea" class="paste-area" placeholder="42.35843000, -71.06060000&#10;42.35892000, -71.05930000" rows="4"></textarea>
+        <button id="addPasted">Add pasted points</button>
+      </div>
+    </details>
+  </aside>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="config.js"></script>
+  <script>
+    (function () {
+      const STORE_KEY = "waypointSelector.start";
+      const DECIMALS = CONFIG.decimals || 8;
+
+      // ---------- small helpers ----------
+      const num = (v) => (v === null || v.trim() === "" ? NaN : Number(v));
+
+      function readSaved() {
+        try {
+          const s = JSON.parse(localStorage.getItem(STORE_KEY));
+          if (s && Number.isFinite(s.lat) && Number.isFinite(s.lon) && Number.isFinite(s.zoom)) return s;
+        } catch (e) { /* storage unavailable or empty */ }
+        return null;
+      }
+      function writeSaved(s) {
+        try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); return true; }
+        catch (e) { return false; }
+      }
+      function eraseSaved() {
+        try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignore */ }
+      }
+
+      async function copyText(text) {
+        try { await navigator.clipboard.writeText(text); return true; } catch (e) { /* fall through */ }
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.cssText = "position:fixed;opacity:0;top:0;left:0";
+        document.body.appendChild(ta);
+        ta.select();
+        let ok = false;
+        try { ok = document.execCommand("copy"); } catch (e) { /* ignore */ }
+        ta.remove();
+        return ok;
+      }
+
+      function flash(btn, message) {
+        if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+        btn.textContent = message;
+        clearTimeout(btn._timer);
+        btn._timer = setTimeout(() => { btn.textContent = btn.dataset.label; }, 1500);
+      }
+
+      const els = {
+        output: document.getElementById("output"),
+        count: document.getElementById("count"),
+        copy: document.getElementById("copy"),
+        download: document.getElementById("download"),
+        undo: document.getElementById("undo"),
+        clear: document.getElementById("clear"),
+        startCoords: document.getElementById("startCoords"),
+        startMeta: document.getElementById("startMeta"),
+        setStart: document.getElementById("setStart"),
+        goStart: document.getElementById("goStart"),
+        copyLink: document.getElementById("copyLink"),
+        useDefault: document.getElementById("useDefault"),
+        startLatInput: document.getElementById("startLatInput"),
+        startLonInput: document.getElementById("startLonInput"),
+        setStartCoords: document.getElementById("setStartCoords"),
+        drawBbox: document.getElementById("drawBbox"),
+        bboxInfo: document.getElementById("bboxInfo"),
+        spacing: document.getElementById("spacing"),
+        gridEstimate: document.getElementById("gridEstimate"),
+        generateGrid: document.getElementById("generateGrid"),
+        clearBbox: document.getElementById("clearBbox"),
+        distanceList: document.getElementById("distanceList"),
+        totalDistance: document.getElementById("totalDistance"),
+        fileInput: document.getElementById("fileInput"),
+        loadFileBtn: document.getElementById("loadFileBtn"),
+        loadFileInfo: document.getElementById("loadFileInfo"),
+        pasteArea: document.getElementById("pasteArea"),
+        addPasted: document.getElementById("addPasted"),
+      };
+
+      // ---------- basemaps (from config.js) ----------
+      const baseLayers = {};
+      CONFIG.layers.forEach((def) => {
+        const opts = {
+          maxZoom: CONFIG.maxZoom || 20,
+          maxNativeZoom: def.maxNativeZoom || 19,
+          subdomains: def.subdomains || "abc",
+          attribution: def.attribution || "",
+        };
+        const tiles = L.tileLayer(def.url, opts);
+        if (def.labelsUrl) {
+          const labels = L.tileLayer(def.labelsUrl, Object.assign({}, opts, { attribution: "" }));
+          baseLayers[def.name] = L.layerGroup([tiles, labels]);
+        } else {
+          baseLayers[def.name] = tiles;
+        }
+      });
+      const layerNames = Object.keys(baseLayers);
+
+      // exact name first, then a partial match, so ?layer=satellite works
+      function findLayer(query) {
+        if (!query) return null;
+        const q = query.trim().toLowerCase();
+        return layerNames.find((n) => n.toLowerCase() === q) ||
+               layerNames.find((n) => n.toLowerCase().includes(q)) || null;
+      }
+
+      // ---------- start location: page link > saved in browser > config.js ----------
+      const configStart = {
+        lat: CONFIG.center[0],
+        lon: CONFIG.center[1],
+        zoom: CONFIG.zoom,
+        layer: baseLayers[CONFIG.defaultLayer] ? CONFIG.defaultLayer : layerNames[0],
+      };
+
+      let start = Object.assign({}, configStart);
+      let startSource = "config.js";
+      let hasSaved = false;
+
+      const saved = readSaved();
+      if (saved) {
+        start = Object.assign(start, saved);
+        startSource = "saved in this browser";
+        hasSaved = true;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const qLat = num(params.get("lat"));
+      const qLon = num(params.get("lon"));
+      const qZoom = num(params.get("zoom"));
+      const qLayer = findLayer(params.get("layer"));
+      if (Number.isFinite(qLat) && Number.isFinite(qLon) && Math.abs(qLat) <= 90 && Math.abs(qLon) <= 180) {
+        start.lat = qLat; start.lon = qLon; startSource = "page link";
+      }
+      if (Number.isFinite(qZoom)) { start.zoom = qZoom; startSource = "page link"; }
+      if (qLayer) { start.layer = qLayer; startSource = "page link"; }
+      if (!baseLayers[start.layer]) start.layer = layerNames[0];
+
+      // ---------- map ----------
+      const map = L.map("map", {
+        zoomControl: true,
+        worldCopyJump: true,
+        maxZoom: CONFIG.maxZoom || 20,
+      }).setView([start.lat, start.lon], start.zoom);
+
+      let currentLayer = start.layer;
+      baseLayers[currentLayer].addTo(map);
+      L.control.layers(baseLayers, null, { position: "topright", collapsed: true }).addTo(map);
+      map.on("baselayerchange", (e) => { currentLayer = e.name; });
+
+      function setBase(name) {
+        if (!baseLayers[name] || name === currentLayer) return;
+        const old = baseLayers[currentLayer];
+        baseLayers[name].addTo(map);
+        map.removeLayer(old);
+        currentLayer = name;
+      }
+
+      L.control.scale({ imperial: true, metric: true }).addTo(map);
+
+      // ---------- start location panel ----------
+      function renderStart() {
+        els.startCoords.textContent = start.lat.toFixed(DECIMALS) + ", " + start.lon.toFixed(DECIMALS);
+        els.startMeta.textContent =
+          "Zoom " + start.zoom + " on " + start.layer + ". Source: " + startSource + ".";
+        els.useDefault.disabled = !hasSaved;
+      }
+
+      els.setStart.addEventListener("click", () => {
+        const c = map.getCenter().wrap();
+        start = {
+          lat: Number(c.lat.toFixed(8)),
+          lon: Number(c.lng.toFixed(8)),
+          zoom: map.getZoom(),
+          layer: currentLayer,
+        };
+        hasSaved = writeSaved(start);
+        startSource = hasSaved ? "saved in this browser" : "this session only";
+        renderStart();
+        flash(els.setStart, hasSaved ? "Start saved" : "Saved for this session");
+      });
+
+      els.goStart.addEventListener("click", () => {
+        map.setView([start.lat, start.lon], start.zoom);
+      });
+
+      els.copyLink.addEventListener("click", async () => {
+        const q = new URLSearchParams({
+          lat: start.lat.toFixed(DECIMALS),
+          lon: start.lon.toFixed(DECIMALS),
+          zoom: String(start.zoom),
+          layer: start.layer,
+        });
+        const url = window.location.href.replace(/[?#].*$/, "") + "?" + q.toString();
+        flash(els.copyLink, (await copyText(url)) ? "Copied" : "Copy failed");
+      });
+
+      els.setStartCoords.addEventListener("click", () => {
+        const lat = num(els.startLatInput.value);
+        const lon = num(els.startLonInput.value);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon) ||
+            Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+          window.alert("Enter a latitude between -90 and 90, and a longitude between -180 and 180.");
+          return;
+        }
+        start = {
+          lat: Number(lat.toFixed(8)),
+          lon: Number(lon.toFixed(8)),
+          zoom: map.getZoom(),
+          layer: currentLayer,
+        };
+        hasSaved = writeSaved(start);
+        startSource = hasSaved ? "saved in this browser" : "this session only";
+        map.setView([start.lat, start.lon], start.zoom);
+        renderStart();
+        flash(els.setStartCoords, hasSaved ? "Start saved" : "Saved for this session");
+      });
+
+      els.useDefault.addEventListener("click", () => {
+        eraseSaved();
+        hasSaved = false;
+        start = Object.assign({}, configStart);
+        startSource = "config.js";
+        setBase(start.layer);
+        map.setView([start.lat, start.lon], start.zoom);
+        renderStart();
+      });
+
+      // ---------- waypoints ----------
+      const markers = [];
+      const line = L.polyline([], { color: "#0b6e8a", weight: 3, opacity: 0.8, dashArray: "6 6" }).addTo(map);
+
+      const fmt = (ll) => ll.lat.toFixed(DECIMALS) + ", " + ll.lng.toFixed(DECIMALS);
+
+      function formatDistance(m) {
+        if (!Number.isFinite(m)) return "";
+        return m >= 1000 ? (m / 1000).toFixed(2) + " km" : m.toFixed(1) + " m";
+      }
+
+      function renderDistances() {
+        if (!markers.length) {
+          els.distanceList.innerHTML = '<p class="dist-empty">Add waypoints to see distances.</p>';
+          els.totalDistance.textContent = "";
+          return;
+        }
+        let total = 0;
+        const rows = markers.map((m, i) => {
+          const c = m.getLatLng();
+          let seg = "start";
+          if (i > 0) {
+            const d = markers[i - 1].getLatLng().distanceTo(c);
+            total += d;
+            seg = "+" + formatDistance(d);
+          }
+          return (
+            '<div class="dist-row"><span class="dist-num">' + (i + 1) + "</span>" +
+            '<span class="dist-coord">' + fmt(c) + "</span>" +
+            '<span class="dist-seg">' + seg + "</span></div>"
+          );
+        });
+        els.distanceList.innerHTML = rows.join("");
+        els.totalDistance.textContent = markers.length > 1 ? "Total: " + formatDistance(total) : "";
+      }
+
+      function pinIcon(n) {
+        return L.divIcon({
+          className: "",
+          html: '<div class="pin">' + n + "</div>",
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+          popupAnchor: [0, -14],
+        });
+      }
+
+      function render() {
+        markers.forEach((m, i) => m.setIcon(pinIcon(i + 1)));
+        line.setLatLngs(markers.map((m) => m.getLatLng()));
+
+        els.output.value = markers.map((m) => fmt(m.getLatLng())).join("\n");
+        els.count.textContent = markers.length + (markers.length === 1 ? " waypoint" : " waypoints");
+
+        const empty = markers.length === 0;
+        els.copy.disabled = empty;
+        els.download.disabled = empty;
+        els.undo.disabled = empty;
+        els.clear.disabled = empty && !bboxBounds;
+        els.output.scrollTop = els.output.scrollHeight;
+        renderDistances();
+      }
+
+      function removeMarker(marker) {
+        const i = markers.indexOf(marker);
+        if (i === -1) return;
+        markers.splice(i, 1);
+        marker.remove();
+        render();
+      }
+
+      function addWaypoint(latlng, skipRender) {
+        const marker = L.marker(latlng.wrap(), {
+          draggable: true,
+          icon: pinIcon(markers.length + 1),
+          keyboard: true,
+        }).addTo(map);
+
+        const body = document.createElement("div");
+        body.className = "popup-body";
+        const coords = document.createElement("div");
+        const del = document.createElement("button");
+        del.type = "button";
+        del.textContent = "Delete waypoint";
+        del.addEventListener("click", () => { marker.closePopup(); removeMarker(marker); });
+        body.append(coords, del);
+        marker.bindPopup(body);
+        marker.on("popupopen", () => { coords.textContent = fmt(marker.getLatLng()); });
+
+        marker.on("drag", () => line.setLatLngs(markers.map((m) => m.getLatLng())));
+        marker.on("dragend", () => {
+          marker.setLatLng(marker.getLatLng().wrap());
+          render();
+        });
+
+        markers.push(marker);
+        if (!skipRender) render();
+      }
+
+      let suppressNextClick = false;
+      map.on("click", (e) => {
+        if (bboxModeOn || suppressNextClick) { suppressNextClick = false; return; }
+        addWaypoint(e.latlng);
+      });
+
+      els.output.addEventListener("focus", () => els.output.select());
+      els.output.addEventListener("click", () => els.output.select());
+
+      els.copy.addEventListener("click", async () => {
+        const ok = await copyText(els.output.value);
+        flash(els.copy, ok ? "Copied" : "Copy failed");
+      });
+
+      els.download.addEventListener("click", () => {
+        const blob = new Blob([els.output.value + "\n"], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "waypoints.txt";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
+
+      els.undo.addEventListener("click", () => {
+        if (markers.length) removeMarker(markers[markers.length - 1]);
+      });
+
+      els.clear.addEventListener("click", () => {
+        if (!markers.length && !bboxBounds) return;
+        const parts = [];
+        if (markers.length) parts.push(markers.length + " waypoint" + (markers.length === 1 ? "" : "s"));
+        if (bboxBounds) parts.push("the bounding box");
+        if (!window.confirm("Remove " + parts.join(" and ") + "?")) return;
+        markers.splice(0).forEach((m) => m.remove());
+        if (bboxLayer) { map.removeLayer(bboxLayer); bboxLayer = null; }
+        bboxBounds = null;
+        renderBbox();
+        render();
+      });
+
+      // ---------- load waypoints: from a file, or pasted text ----------
+      // Expects one "lat, lon" pair per line (the site's own export format).
+      // Blank lines are skipped silently; any line that isn't a valid pair
+      // is counted as skipped and reported to the user.
+      function parseCoordText(text) {
+        const lines = String(text).split(/\r?\n/);
+        const points = [];
+        let invalid = 0;
+        lines.forEach((line) => {
+          const trimmed = line.trim();
+          if (!trimmed) return;
+          const nums = trimmed.match(/-?\d+(?:\.\d+)?/g);
+          if (!nums || nums.length < 2) { invalid++; return; }
+          const lat = Number(nums[0]);
+          const lon = Number(nums[1]);
+          if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+            points.push(L.latLng(lat, lon));
+          } else {
+            invalid++;
+          }
+        });
+        return { points, invalid };
+      }
+
+      function bulkAddPoints(points) {
+        points.forEach((ll) => addWaypoint(ll, true));
+        render();
+      }
+
+      els.loadFileBtn.addEventListener("click", () => els.fileInput.click());
+
+      els.fileInput.addEventListener("change", () => {
+        const file = els.fileInput.files && els.fileInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const { points, invalid } = parseCoordText(String(reader.result));
+          els.fileInput.value = "";
+          if (!points.length) {
+            els.loadFileInfo.textContent = "No valid \"lat, lon\" pairs found in that file.";
+            return;
+          }
+          if (points.length > 2000) {
+            els.loadFileInfo.textContent =
+              "That file has " + points.length + " points, which is too many to load at once.";
+            return;
+          }
+          if (markers.length) {
+            const ok = window.confirm(
+              "Loading this file will replace your current " + markers.length +
+              " waypoint" + (markers.length === 1 ? "" : "s") + ". Continue?"
+            );
+            if (!ok) return;
+          }
+          markers.splice(0).forEach((m) => m.remove());
+          bulkAddPoints(points);
+          map.fitBounds(L.latLngBounds(points.map((p) => [p.lat, p.lng])), { padding: [40, 40] });
+          els.loadFileInfo.textContent =
+            "Loaded " + points.length + " point" + (points.length === 1 ? "" : "s") +
+            (invalid ? " (" + invalid + " skipped)" : "") + " from " + file.name + ".";
+        };
+        reader.onerror = () => {
+          els.fileInput.value = "";
+          els.loadFileInfo.textContent = "Could not read that file.";
+        };
+        reader.readAsText(file);
+      });
+
+      function addPastedText(text) {
+        const { points, invalid } = parseCoordText(text);
+        if (!points.length) return { added: 0, invalid };
+        if (points.length > 2000) {
+          window.alert("That's " + points.length + " points, which is too many to add at once.");
+          return { added: 0, invalid };
+        }
+        bulkAddPoints(points);
+        return { added: points.length, invalid };
+      }
+
+      els.pasteArea.addEventListener("paste", (e) => {
+        const clip = e.clipboardData || window.clipboardData;
+        const text = clip ? clip.getData("text") : "";
+        e.preventDefault();
+        const { added, invalid } = addPastedText(text);
+        els.pasteArea.value = "";
+        if (added) {
+          flash(els.addPasted, "Added " + added + (invalid ? " (" + invalid + " skipped)" : ""));
+        }
+      });
+
+      els.addPasted.addEventListener("click", () => {
+        const { added, invalid } = addPastedText(els.pasteArea.value);
+        if (added) {
+          els.pasteArea.value = "";
+          flash(els.addPasted, "Added " + added + (invalid ? " (" + invalid + " skipped)" : ""));
+        } else {
+          window.alert('No valid "lat, lon" pairs found. Use one pair per line.');
+        }
+      });
+
+      // ---------- bounding box grid ----------
+      let bboxModeOn = false;
+      let bboxLayer = null;
+      let bboxBounds = null;
+      let drawing = false;
+      let drawStart = null;
+
+      function metersToLatDeg(m) { return m / 111320; }
+      function metersToLonDeg(m, atLat) { return m / (111320 * Math.cos((atLat * Math.PI) / 180)); }
+
+      function setBboxMode(on) {
+        bboxModeOn = on;
+        if (!els.drawBbox.dataset.label) els.drawBbox.dataset.label = els.drawBbox.textContent;
+        if (on) {
+          map.dragging.disable();
+          els.drawBbox.textContent = "Click and drag on the map\u2026";
+        } else {
+          map.dragging.enable();
+          els.drawBbox.textContent = els.drawBbox.dataset.label;
+        }
+      }
+
+      els.drawBbox.addEventListener("click", () => setBboxMode(!bboxModeOn));
+
+      map.on("mousedown", (e) => {
+        if (!bboxModeOn) return;
+        drawing = true;
+        drawStart = e.latlng;
+        if (bboxLayer) { map.removeLayer(bboxLayer); bboxLayer = null; }
+        bboxLayer = L.rectangle([drawStart, drawStart], {
+          color: "#e67e22", weight: 2, fillOpacity: 0.08, dashArray: "4 4",
+        }).addTo(map);
+      });
+
+      map.on("mousemove", (e) => {
+        if (!drawing) return;
+        bboxLayer.setBounds(L.latLngBounds(drawStart, e.latlng));
+      });
+
+      function finishDrawing() {
+        drawing = false;
+        bboxBounds = bboxLayer.getBounds();
+        setBboxMode(false);
+        suppressNextClick = true;
+        renderBbox();
+        render();
+      }
+      map.on("mouseup", () => { if (drawing) finishDrawing(); });
+      document.addEventListener("mouseup", () => { if (drawing) finishDrawing(); });
+
+      function renderBbox() {
+        if (!bboxBounds) {
+          els.bboxInfo.textContent = "No box drawn yet.";
+          els.generateGrid.disabled = true;
+          els.clearBbox.disabled = true;
+          els.gridEstimate.textContent = "";
+          return;
+        }
+        const sw = bboxBounds.getSouthWest();
+        const ne = bboxBounds.getNorthEast();
+        els.bboxInfo.textContent =
+          "SW " + sw.lat.toFixed(DECIMALS) + ", " + sw.lng.toFixed(DECIMALS) +
+          "  \u2192  NE " + ne.lat.toFixed(DECIMALS) + ", " + ne.lng.toFixed(DECIMALS);
+        els.generateGrid.disabled = false;
+        els.clearBbox.disabled = false;
+        updateGridEstimate();
+      }
+
+      function gridDims() {
+        if (!bboxBounds) return null;
+        const spacing = Number(els.spacing.value);
+        if (!Number.isFinite(spacing) || spacing <= 0) return null;
+        const sw = bboxBounds.getSouthWest();
+        const ne = bboxBounds.getNorthEast();
+        const midLat = (sw.lat + ne.lat) / 2;
+        const latSpan = Math.max(ne.lat - sw.lat, 0);
+        const lonSpan = Math.max(ne.lng - sw.lng, 0);
+        const latStep = metersToLatDeg(spacing);
+        const lonStep = metersToLonDeg(spacing, midLat);
+        const rows = latStep > 0 ? Math.floor(latSpan / latStep) + 1 : 1;
+        const cols = lonStep > 0 ? Math.floor(lonSpan / lonStep) + 1 : 1;
+        return { sw, ne, latStep, lonStep, rows, cols };
+      }
+
+      function updateGridEstimate() {
+        const d = gridDims();
+        if (!d) {
+          els.gridEstimate.textContent = "Enter a spacing in meters to see how many points that makes.";
+          return;
+        }
+        const total = d.rows * d.cols;
+        els.gridEstimate.textContent = d.rows + " \u00d7 " + d.cols + " = " + total + " points" +
+          (total > 1000 ? " \u2014 that's a lot; consider a larger spacing." : "");
+      }
+      els.spacing.addEventListener("input", updateGridEstimate);
+
+      els.generateGrid.addEventListener("click", () => {
+        const d = gridDims();
+        if (!d) { window.alert("Enter a valid spacing in meters first."); return; }
+        const total = d.rows * d.cols;
+        if (total === 0) return;
+        if (total > 2000) {
+          window.alert("That spacing would generate " + total + " points, which is too many to add at once. Use a larger spacing.");
+          return;
+        }
+        for (let r = 0; r < d.rows; r++) {
+          const lat = d.sw.lat + r * d.latStep;
+          const leftToRight = r % 2 === 0;
+          for (let ci = 0; ci < d.cols; ci++) {
+            const c = leftToRight ? ci : d.cols - 1 - ci;
+            const lon = d.sw.lng + c * d.lonStep;
+            addWaypoint(L.latLng(lat, lon), true);
+          }
+        }
+        render();
+      });
+
+      els.clearBbox.addEventListener("click", () => {
+        if (bboxLayer) { map.removeLayer(bboxLayer); bboxLayer = null; }
+        bboxBounds = null;
+        renderBbox();
+        render();
+      });
+
+      renderStart();
+      renderBbox();
+      render();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Survey Mission Calculator — Orpheus Ocean</title>
+  <style>
+    :root {
+      --bg: #0f1117; --surface: #1a1d2e; --surface2: #242740;
+      --accent: #4a9eff; --success: #3ecf8e; --warn: #f0b429; --danger: #ff5a5f;
+      --text: #e8eaf0; --muted: #8892b0; --border: #2d3154; --r: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+
+    /* ── Header ── */
+    .hdr { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .hdr-title h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+    .hdr-title p  { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+    .hdr-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+    .hdr-right label { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+    select, input[type="number"] {
+      background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 7px 10px; font-size: 0.88rem; outline: none; transition: border-color .15s;
+    }
+    select:focus, input[type="number"]:focus { border-color: var(--accent); }
+
+    /* ── Layout ── */
+    .layout { display: grid; grid-template-columns: 300px 1fr; min-height: calc(100vh - 57px - 36px); }
+    .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; }
+    .main-col { display: flex; flex-direction: column; overflow-y: auto; }
+
+    /* ── Sections & cards ── */
+    .sec { margin-bottom: 14px; }
+    .sec-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .card { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+    .card.accent { border-color: var(--accent); background: rgba(74,158,255,.07); }
+    .card .lbl { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 3px; }
+    .card .val { font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .card .val .u { font-size: 0.8rem; font-weight: 400; color: var(--muted); margin-left: 2px; }
+    .card .sub { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+
+    /* ── Inputs ── */
+    .field { margin-bottom: 13px; }
+    .field > label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 5px; }
+    .field > label .u { color: var(--accent); }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .row input[type="range"] { flex: 1; accent-color: var(--accent); cursor: pointer; }
+    .row input[type="number"] { width: 76px; text-align: right; padding: 6px 8px; }
+    .badge { display: inline-block; font-size: 0.65rem; padding: 1px 6px; border-radius: 99px; font-weight: 700; }
+    .badge-est { background: rgba(240,180,41,.15); color: var(--warn); }
+    .badge-rec { background: rgba(74,158,255,.15); color: var(--accent); }
+    .badge-ok  { background: rgba(62,207,142,.15); color: var(--success); }
+
+    /* ── Result grids ── */
+    .rgrid  { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .rgrid3 { grid-template-columns: 1fr 1fr 1fr; }
+
+    /* ── Panels ── */
+    .results-panel { padding: 18px; }
+    .viz-panel { background: var(--surface); border-top: 1px solid var(--border); padding: 16px; }
+
+    /* ── Note boxes ── */
+    .note { font-size: 0.76rem; color: var(--muted); line-height: 1.6; padding: 9px 12px; background: var(--surface2); border-radius: 6px; border-left: 3px solid var(--accent); margin-bottom: 10px; }
+    .note.warn { border-left-color: var(--warn); }
+    .note strong { color: var(--text); }
+
+    /* ── Camera info ── */
+    .cam-info { font-size: 0.78rem; color: var(--muted); line-height: 1.7; margin-bottom: 10px; }
+    .cam-info strong { color: var(--text); }
+
+    /* ── Buttons ── */
+    .btn { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 14px; font-size: 0.82rem; cursor: pointer; transition: background .15s; }
+    .btn:hover { background: var(--border); }
+    .btn-row { display: flex; gap: 8px; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+    /* ── Overlap canvas area ── */
+    canvas { border: 1px solid var(--border); border-radius: 6px; display: block; }
+    .canvas-row { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+    .canvas-wrap { display: flex; flex-direction: column; gap: 6px; }
+    .canvas-cap { font-size: 0.7rem; color: var(--muted); text-align: center; }
+    .legend { display: flex; gap: 14px; margin-top: 8px; flex-wrap: wrap; }
+    .leg-item { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--muted); }
+    .leg-swatch { width: 14px; height: 14px; border-radius: 3px; }
+
+    /* ── Survey Orientation cards ── */
+    .orient-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .oc { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 12px; transition: border-color .2s; }
+    .oc.recommended { border-color: var(--accent); }
+    .oc-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 6px; flex-wrap: wrap; }
+    .oc-name { font-size: 0.82rem; font-weight: 700; }
+    .oc-stats { display: flex; flex-direction: column; gap: 5px; }
+    .oc-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.78rem; color: var(--muted); gap: 8px; }
+    .oc-row strong { color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .oc-total { border-top: 1px solid var(--border); padding-top: 5px; margin-top: 3px; }
+    .oc-total .oc-row strong { font-size: 1rem; color: var(--accent); }
+
+    /* ── Mission plan canvases ── */
+    .mp-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .mp-wrap { display: flex; flex-direction: column; gap: 4px; }
+    .mp-cap { font-size: 0.72rem; color: var(--muted); text-align: center; }
+
+    /* ── Survey area inputs ── */
+    .area-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .area-grid .field { margin: 0; }
+    .area-grid .field label { font-size: 0.78rem; color: var(--muted); display: block; margin-bottom: 4px; }
+    .area-grid .field input { width: 100%; }
+
+    /* ── Footer ── */
+    .footer { background: var(--surface); border-top: 1px solid var(--border); padding: 8px 20px; display: flex; align-items: center; gap: 8px; font-size: 0.72rem; color: var(--muted); }
+    .footer a { color: var(--accent); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 820px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+      .canvas-row, .mp-row { flex-direction: column; }
+      .orient-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-title">
+    <h1>Survey Mission Calculator</h1>
+    <p>Underwater photogrammetry planning — footprint, GSD, overlap, mission sizing</p>
+  </div>
+  <div class="hdr-right">
+    <label for="sel-profile">Camera:</label>
+    <select id="sel-profile" onchange="onProfileChange()"></select>
+    <div class="btn-row">
+      <button class="btn" onclick="copyResults()">Copy Results</button>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+
+    <div class="sec">
+      <div class="sec-title">Camera Info</div>
+      <div id="cam-info" class="cam-info"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">Field of View</div>
+      <div class="field">
+        <label>Horizontal FOV <span class="u">°</span></label>
+        <div class="row">
+          <input type="range" id="hfov-s" min="10" max="180" step="0.5" oninput="sync('hfov',this)">
+          <input type="number" id="hfov-n" min="1" max="360" step="0.5" oninput="syncN('hfov',this)">
+        </div>
+      </div>
+      <div class="field">
+        <label>Vertical FOV <span class="u">°</span> <span class="badge badge-est" id="vfov-badge">estimated</span></label>
+        <div class="row">
+          <input type="range" id="vfov-s" min="10" max="180" step="0.5" oninput="sync('vfov',this)">
+          <input type="number" id="vfov-n" min="1" max="360" step="0.5" oninput="syncN('vfov',this)">
+        </div>
+      </div>
+      <div class="note" style="margin-top:6px; font-size:0.72rem;">
+        VFOV estimated from sensor aspect ratio (equidistant fisheye). Adjust if you have calibrated values.
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">Mission Parameters</div>
+      <div class="field">
+        <label>Altitude above seafloor <span class="u">m</span></label>
+        <div class="row">
+          <input type="range" id="alt-s" min="0.5" max="20" step="0.1" oninput="sync('alt',this)">
+          <input type="number" id="alt-n" min="0.1" max="5000" step="0.1" oninput="syncN('alt',this)">
+        </div>
+      </div>
+      <div class="field">
+        <label>Vehicle speed <span class="u">m/s</span></label>
+        <div class="row">
+          <input type="range" id="spd-s" min="0.05" max="5" step="0.05" oninput="sync('spd',this)">
+          <input type="number" id="spd-n" min="0.01" max="100" step="0.05" oninput="syncN('spd',this)">
+        </div>
+      </div>
+      <div class="field">
+        <label>Forward overlap <span class="u">%</span></label>
+        <div class="row">
+          <input type="range" id="fwd-s" min="0" max="95" step="1" oninput="sync('fwd',this)">
+          <input type="number" id="fwd-n" min="0" max="99" step="1" oninput="syncN('fwd',this)">
+        </div>
+      </div>
+      <div class="field">
+        <label>Side overlap <span class="u">%</span></label>
+        <div class="row">
+          <input type="range" id="sid-s" min="0" max="95" step="1" oninput="sync('sid',this)">
+          <input type="number" id="sid-n" min="0" max="99" step="1" oninput="syncN('sid',this)">
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">Survey Area <span style="color:var(--muted);font-weight:400;">(for mission sizing)</span></div>
+      <div class="area-grid">
+        <div class="field">
+          <label>Width <span class="u">m</span></label>
+          <input type="number" id="aw-n" min="1" step="1" placeholder="e.g. 20" oninput="recalc()">
+        </div>
+        <div class="field">
+          <label>Length <span class="u">m</span></label>
+          <input type="number" id="al-n" min="1" step="1" placeholder="e.g. 30" oninput="recalc()">
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- ── Main column ── -->
+  <div class="main-col">
+    <div class="results-panel">
+
+      <!-- Flat port warning -->
+      <div id="flat-warn" class="note warn" style="display:none;">
+        <strong>Flat port — refraction correction applied.</strong>
+        Underwater HFOV: <strong id="uw-hfov">—</strong>°, VFOV: <strong id="uw-vfov">—</strong>°
+        (n = 1.334 seawater). All values below use corrected underwater angles.
+      </div>
+
+      <!-- Per-image: Footprint & GSD -->
+      <div class="sec-title">Footprint &amp; Resolution  <span style="font-weight:400;color:var(--muted);text-transform:none;font-size:0.75rem;">— per image</span></div>
+      <div class="rgrid" style="margin-bottom:14px;">
+        <div class="card accent">
+          <div class="lbl">Footprint Width (cross-track)</div>
+          <div class="val"><span id="r-fw">—</span><span class="u">m</span></div>
+          <div class="sub" id="r-fw-sub"></div>
+        </div>
+        <div class="card accent">
+          <div class="lbl">Footprint Height (along-track)</div>
+          <div class="val"><span id="r-fh">—</span><span class="u">m</span></div>
+          <div class="sub" id="r-fh-sub"></div>
+        </div>
+        <div class="card">
+          <div class="lbl">GSD — cross-track</div>
+          <div class="val"><span id="r-gx">—</span><span class="u">mm/px</span></div>
+          <div class="sub">footprint W ÷ pixel cols</div>
+        </div>
+        <div class="card">
+          <div class="lbl">GSD — along-track</div>
+          <div class="val"><span id="r-gy">—</span><span class="u">mm/px</span></div>
+          <div class="sub">footprint H ÷ pixel rows</div>
+        </div>
+      </div>
+
+      <!-- Per-image: Spacing & timing -->
+      <div class="sec-title">Spacing &amp; Timing  <span style="font-weight:400;color:var(--muted);text-transform:none;font-size:0.75rem;">— per image</span></div>
+      <div class="rgrid" style="margin-bottom:14px;">
+        <div class="card">
+          <div class="lbl">Line spacing (cross-track)</div>
+          <div class="val"><span id="r-ls">—</span><span class="u">m</span></div>
+          <div class="sub">swath centre–centre</div>
+        </div>
+        <div class="card">
+          <div class="lbl">Trigger distance (along-track)</div>
+          <div class="val"><span id="r-td">—</span><span class="u">m</span></div>
+          <div class="sub">frame centre–centre</div>
+        </div>
+        <div class="card">
+          <div class="lbl">Trigger interval</div>
+          <div class="val"><span id="r-ti">—</span><span class="u">s</span></div>
+          <div class="sub">at given speed</div>
+        </div>
+        <div class="card">
+          <div class="lbl">Required frame rate</div>
+          <div class="val"><span id="r-fps">—</span><span class="u">fps</span></div>
+          <div class="sub" id="r-fps-warn"></div>
+        </div>
+      </div>
+
+      <!-- ── Mission sizing (conditional on survey area) ── -->
+      <div id="survey-block" style="display:none;">
+
+        <!-- Orientation comparison -->
+        <div class="sec-title">Survey Orientations  <span style="font-weight:400;color:var(--muted);text-transform:none;font-size:0.75rem;">— lawnmower pattern</span></div>
+        <div class="orient-grid">
+
+          <!-- Orientation A: lines along Width -->
+          <div class="oc" id="oc-a">
+            <div class="oc-hdr">
+              <span class="oc-name" id="oa-name">Lines ∥ Width</span>
+              <span class="badge badge-rec" id="oa-rec" style="display:none">Recommended</span>
+            </div>
+            <div class="oc-stats">
+              <div class="oc-row"><span>Swaths</span><strong id="oa-lines">—</strong></div>
+              <div class="oc-row"><span>Photos / swath</span><strong id="oa-ppl">—</strong></div>
+              <div class="oc-row"><span>Time / swath</span><strong id="oa-tpl">—</strong></div>
+              <div class="oc-row"><span>Total path</span><strong id="oa-dist">—</strong></div>
+              <div class="oc-total">
+                <div class="oc-row"><span>Total photos</span><strong id="oa-tot">—</strong></div>
+                <div class="oc-row"><span>Total time</span><strong id="oa-time">—</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Orientation B: lines along Length -->
+          <div class="oc" id="oc-b">
+            <div class="oc-hdr">
+              <span class="oc-name" id="ob-name">Lines ∥ Length</span>
+              <span class="badge badge-rec" id="ob-rec" style="display:none">Recommended</span>
+            </div>
+            <div class="oc-stats">
+              <div class="oc-row"><span>Swaths</span><strong id="ob-lines">—</strong></div>
+              <div class="oc-row"><span>Photos / swath</span><strong id="ob-ppl">—</strong></div>
+              <div class="oc-row"><span>Time / swath</span><strong id="ob-tpl">—</strong></div>
+              <div class="oc-row"><span>Total path</span><strong id="ob-dist">—</strong></div>
+              <div class="oc-total">
+                <div class="oc-row"><span>Total photos</span><strong id="ob-tot">—</strong></div>
+                <div class="oc-row"><span>Total time</span><strong id="ob-time">—</strong></div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /orient-grid -->
+
+        <!-- Mission plan view -->
+        <div class="sec-title">Mission Plan View  <span style="font-weight:400;color:var(--muted);text-transform:none;font-size:0.75rem;">— lawnmower track to scale</span></div>
+        <div class="mp-row">
+          <div class="mp-wrap">
+            <canvas id="cv-pa" width="355" height="220" style="background:#0a0c14"></canvas>
+            <div class="mp-cap" id="cap-a">Lines ∥ Width</div>
+          </div>
+          <div class="mp-wrap">
+            <canvas id="cv-pb" width="355" height="220" style="background:#0a0c14"></canvas>
+            <div class="mp-cap" id="cap-b">Lines ∥ Length</div>
+          </div>
+        </div>
+
+        <!-- Data volume estimates -->
+        <div class="sec-title" style="margin-top:4px;">Data &amp; Storage  <span style="font-weight:400;color:var(--muted);text-transform:none;font-size:0.75rem;">— recommended orientation</span></div>
+        <div class="rgrid rgrid3">
+          <div class="card"><div class="lbl">Total images</div><div class="val" id="r-tot">—</div><div class="sub" id="r-tot-sub"></div></div>
+          <div class="card"><div class="lbl">Est. JPEG storage</div><div class="val" id="r-dj">—</div><div class="sub">~0.5 B/px</div></div>
+          <div class="card"><div class="lbl">Est. RAW storage</div><div class="val" id="r-dr">—</div><div class="sub">16-bit per pixel</div></div>
+        </div>
+
+      </div><!-- /survey-block -->
+
+    </div><!-- /results-panel -->
+
+    <!-- ── Overlap Visualization (always visible) ── -->
+    <div class="viz-panel">
+      <div class="sec-title">Overlap Visualization  <span style="font-weight:400;color:var(--muted);text-transform:none;font-size:0.75rem;">— conceptual 3 × 4 footprint grid</span></div>
+      <div class="canvas-row">
+        <div class="canvas-wrap">
+          <canvas id="cv-top" width="560" height="300" style="background:#0a0c14"></canvas>
+          <div class="legend">
+            <div class="leg-item"><div class="leg-swatch" style="background:rgba(74,158,255,.18);border:1px solid rgba(74,158,255,.4)"></div>1× coverage</div>
+            <div class="leg-item"><div class="leg-swatch" style="background:rgba(74,158,255,.34)"></div>2× overlap</div>
+            <div class="leg-item"><div class="leg-swatch" style="background:rgba(74,158,255,.52)"></div>3× overlap</div>
+            <div class="leg-item"><div class="leg-swatch" style="background:rgba(74,158,255,.70)"></div>4+× overlap</div>
+          </div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="cv-side" width="190" height="300" style="background:#0a0c14"></canvas>
+          <div class="canvas-cap">Side view</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-col -->
+</div><!-- /layout -->
+
+<div class="footer">
+  <span>Orpheus Ocean</span>
+  <span style="color:var(--border)">|</span>
+  <a href="https://orpheusocean.com" target="_blank">orpheusocean.com</a>
+  <span style="color:var(--border)">|</span>
+  <span>VFOV estimated (equidistant fisheye). Verify against calibrated lens data before mission-critical use.</span>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// CAMERA PROFILES — add new cameras here, no other code changes needed
+// hfov/vfov: horizontal/vertical field of view (degrees)
+// vfov estimated: hfov × (pixH/pixW)  [equidistant fisheye model]
+// port: 'dome' = FOV unchanged underwater | 'flat' = corrected by Snell's law
+// ─────────────────────────────────────────────────────────────────────────────
+const PROFILES = [
+  {
+    id: 'mv100-3.2-dome-27', name: 'MV100 3.2MP + 2.7mm Dome',
+    mfr: 'Deep Sea Power & Light', model: 'MV100-D-TI-BFS-032-C-027',
+    px: 2048, py: 1536, pixUm: 3.45, hfov: 120, vfov: 90,
+    port: 'dome', maxFps: 35.4, vfovEst: true,
+    note: 'Sony IMX265 global shutter. Dome port: FOV identical in air and water.',
+  },
+  {
+    id: 'mv100-2.3-dome-27', name: 'MV100 2.3MP + 2.7mm Dome',
+    mfr: 'Deep Sea Power & Light', model: 'MV100-D-TI-BFS-023-C-027',
+    px: 1920, py: 1200, pixUm: 3.45, hfov: 105, vfov: 65.6,
+    port: 'dome', maxFps: 48.3, vfovEst: true,
+  },
+  {
+    id: 'mv100-1.6-dome-27', name: 'MV100 1.6MP + 2.7mm Dome',
+    mfr: 'Deep Sea Power & Light', model: 'MV100-D-TI-BFS-016-C-027',
+    px: 1440, py: 1080, pixUm: 3.45, hfov: 101, vfov: 75.8,
+    port: 'dome', maxFps: 71.6, vfovEst: true,
+  },
+  {
+    id: 'mv100-3.2-flat-28', name: 'MV100 3.2MP + 2.8mm Flat',
+    mfr: 'Deep Sea Power & Light', model: 'MV100-F-TI-BFS-032-C-028',
+    px: 2048, py: 1536, pixUm: 3.45, hfov: 76.3, vfov: 57.2,
+    port: 'flat', maxFps: 35.4, vfovEst: true,
+    note: 'Flat port: in-air FOV entered; refraction correction applied automatically.',
+  },
+  {
+    id: 'mv100-3.2-flat-60', name: 'MV100 3.2MP + 6mm Flat',
+    mfr: 'Deep Sea Power & Light', model: 'MV100-F-TI-BFS-032-C-060',
+    px: 2048, py: 1536, pixUm: 3.45, hfov: 43, vfov: 32.3,
+    port: 'flat', maxFps: 35.4, vfovEst: true,
+  },
+  {
+    id: 'custom', name: 'Custom Camera', mfr: '', model: '',
+    px: 1920, py: 1080, pixUm: 5.0, hfov: 90, vfov: 50.6,
+    port: 'dome', maxFps: 60, vfovEst: false,
+  },
+];
+
+const N_WATER = 1.334;
+let profile = PROFILES[0];
+let lastR = null;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INIT & PROFILE CHANGE
+// ─────────────────────────────────────────────────────────────────────────────
+function init() {
+  const sel = document.getElementById('sel-profile');
+  PROFILES.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.id; o.textContent = p.name;
+    sel.appendChild(o);
+  });
+  setVal('alt', 2.0); setVal('spd', 1.0); setVal('fwd', 75); setVal('sid', 60);
+  onProfileChange();
+}
+
+function onProfileChange() {
+  const id = document.getElementById('sel-profile').value;
+  profile = PROFILES.find(p => p.id === id) || PROFILES[0];
+  document.getElementById('cam-info').innerHTML =
+    `<strong>${profile.mfr || 'Custom'}</strong><br>
+     Model: ${profile.model || '—'}<br>
+     Sensor: ${profile.px} × ${profile.py} px, ${profile.pixUm} µm pixels<br>
+     Port: <strong>${profile.port}</strong>
+     ${profile.note ? `<br><em style="font-size:.7rem">${profile.note}</em>` : ''}`;
+  document.getElementById('vfov-badge').style.display = profile.vfovEst ? 'inline' : 'none';
+  if (profile.hfov !== null) setVal('hfov', profile.hfov);
+  if (profile.vfov !== null) setVal('vfov', profile.vfov);
+  recalc();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SLIDER ↔ NUMBER SYNC
+// ─────────────────────────────────────────────────────────────────────────────
+function sync(key, el)  { document.getElementById(key+'-n').value = el.value; recalc(); }
+function syncN(key, el) {
+  const s = document.getElementById(key+'-s'), v = parseFloat(el.value);
+  if (!isNaN(v)) s.value = Math.min(Math.max(v, +s.min), +s.max);
+  recalc();
+}
+function setVal(key, v) { document.getElementById(key+'-s').value = v; document.getElementById(key+'-n').value = v; }
+function getVal(key)    { return parseFloat(document.getElementById(key+'-n').value) || 0; }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHOTOGRAMMETRY CORE
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Flat-port Snell's law correction (full FOV angle in degrees)
+// n_air × sin(θ_air) = n_water × sin(θ_water)
+function flatCorrect(fovDeg) {
+  const half = fovDeg / 2 * Math.PI / 180;
+  const sinW = Math.sin(half) / N_WATER;
+  if (sinW > 1) return fovDeg;
+  return Math.asin(sinW) * 2 * 180 / Math.PI;
+}
+
+function computeImaging(hfov, vfov, alt, spd, fwd, sid) {
+  const ehfov = profile.port === 'flat' ? flatCorrect(hfov) : hfov;
+  const evfov = profile.port === 'flat' ? flatCorrect(vfov) : vfov;
+  const hr = ehfov * Math.PI / 180, vr = evfov * Math.PI / 180;
+  // fw = cross-track footprint width, fh = along-track footprint height
+  const fw = 2 * alt * Math.tan(hr / 2);
+  const fh = 2 * alt * Math.tan(vr / 2);
+  const gx = (fw / profile.px) * 1000;  // mm/px cross-track
+  const gy = (fh / profile.py) * 1000;  // mm/px along-track
+  const ls = fw * (1 - sid / 100);      // line spacing (cross-track step)
+  const td = fh * (1 - fwd / 100);      // trigger distance (along-track step)
+  const ti = spd > 0 ? td / spd : null;
+  const fps = ti ? 1 / ti : null;
+  return { ehfov, evfov, fw, fh, gx, gy, ls, td, ti, fps };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MISSION ORIENTATION CALCULATIONS
+// For a lawnmower survey of area aw × al:
+//   Orientation A: vehicle sweeps along W, stepping in L  (lines ∥ Width)
+//   Orientation B: vehicle sweeps along L, stepping in W  (lines ∥ Length)
+// Formula places first/last line so its footprint edge aligns with area edge.
+// ─────────────────────────────────────────────────────────────────────────────
+function computeOrientations(aw, al, r, spd) {
+  const { fw, fh, ls, td } = r;
+
+  function orient(lineLen, coverLen) {
+    // nLines: number of parallel swaths needed to cover coverLen
+    const nLines = 1 + Math.ceil(Math.max(0, coverLen - fw) / ls);
+    // ppl: photos per swath to cover lineLen
+    const ppl = 1 + Math.ceil(Math.max(0, lineLen - fh) / td);
+    const tot  = nLines * ppl;
+    const tpl  = spd > 0 ? lineLen / spd : null;   // seconds per swath
+    const dist = nLines * lineLen;                   // total path metres (no turns)
+    const time = spd > 0 ? dist / spd : null;        // total seconds
+    return { nLines, ppl, tot, tpl, dist, time };
+  }
+
+  const a = orient(aw, al);   // sweep along W, step in L direction
+  const b = orient(al, aw);   // sweep along L, step in W direction
+  // Recommend whichever needs fewer swaths (fewer turns is better for AUVs)
+  const recA = a.nLines <= b.nLines;
+  return { a, b, recA };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN RECALCULATE
+// ─────────────────────────────────────────────────────────────────────────────
+function recalc() {
+  const hfov = getVal('hfov'), vfov = getVal('vfov');
+  const alt  = getVal('alt'),  spd  = getVal('spd');
+  const fwd  = getVal('fwd'), sid  = getVal('sid');
+  if (!hfov || !vfov || !alt) return;
+
+  const r = computeImaging(hfov, vfov, alt, spd, fwd, sid);
+  lastR = { ...r, alt, spd, fwd, sid, hfov, vfov };
+
+  // Flat port warning
+  const fw = document.getElementById('flat-warn');
+  if (profile.port === 'flat') {
+    fw.style.display = 'block';
+    set('uw-hfov', r.ehfov.toFixed(1)); set('uw-vfov', r.evfov.toFixed(1));
+  } else fw.style.display = 'none';
+
+  // Per-image results
+  set('r-fw', f(r.fw,2)); set('r-fw-sub', f(r.fw*100,0)+' cm wide');
+  set('r-fh', f(r.fh,2)); set('r-fh-sub', f(r.fh*100,0)+' cm tall');
+  set('r-gx', f(r.gx,2)); set('r-gy', f(r.gy,2));
+  set('r-ls', f(r.ls,2)); set('r-td', f(r.td,2));
+  set('r-ti', r.ti  ? f(r.ti,2)+' s' : '—');
+  set('r-fps', r.fps ? f(r.fps,2)+' fps' : '—');
+
+  const fpsWarn = document.getElementById('r-fps-warn');
+  if (r.fps && r.fps > profile.maxFps)
+    fpsWarn.innerHTML = `<span style="color:var(--danger)">&#9888; exceeds sensor max (${profile.maxFps} fps)</span>`;
+  else if (r.fps)
+    fpsWarn.innerHTML = `<span style="color:var(--success)">&#10003; within sensor max (${profile.maxFps} fps)</span>`;
+  else fpsWarn.textContent = '';
+
+  // Survey area
+  const aw = parseFloat(document.getElementById('aw-n').value);
+  const al = parseFloat(document.getElementById('al-n').value);
+  const block = document.getElementById('survey-block');
+
+  if (aw > 0 && al > 0 && r.ls > 0 && r.td > 0) {
+    block.style.display = 'block';
+    const orients = computeOrientations(aw, al, r, spd);
+    updateOrientUI(aw, al, orients, r);
+  } else {
+    block.style.display = 'none';
+  }
+
+  // Always draw overlap and side-view canvases
+  drawOverlap(r);
+  drawSide(r, alt);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ORIENTATION UI UPDATE
+// ─────────────────────────────────────────────────────────────────────────────
+function updateOrientUI(aw, al, orients, r) {
+  const { a, b, recA } = orients;
+
+  function fillCard(prefix, cardId, o, lineLen, name, isRec) {
+    set(prefix+'-name', name);
+    set(prefix+'-lines', o.nLines);
+    set(prefix+'-ppl',   o.ppl);
+    set(prefix+'-tpl',   o.tpl  ? f(o.tpl/60,1)+' min' : '—');
+    set(prefix+'-dist',  f(o.dist,0)+' m');
+    set(prefix+'-tot',   o.tot.toLocaleString());
+    set(prefix+'-time',  o.time ? fmtTime(o.time) : '—');
+    const rec  = document.getElementById(prefix+'-rec');
+    const card = document.getElementById(cardId);
+    if (rec)  rec.style.display  = isRec ? 'inline' : 'none';
+    if (card) card.className = 'oc' + (isRec ? ' recommended' : '');
+  }
+
+  fillCard('oa', 'oc-a', a, aw, `Lines ∥ Width  (${f(aw,0)} m/swath)`, recA);
+  fillCard('ob', 'oc-b', b, al, `Lines ∥ Length  (${f(al,0)} m/swath)`, !recA);
+
+  // Data estimates (use recommended orientation)
+  const best = recA ? a : b;
+  const pix  = profile.px * profile.py;
+  const jpegMB = pix * 0.5 / (1024*1024);
+  const rawMB  = pix * 2   / (1024*1024);
+  set('r-tot', best.tot.toLocaleString());
+  set('r-tot-sub', recA ? 'lines ∥ width' : 'lines ∥ length');
+  set('r-dj', fmtBytes(best.tot * jpegMB));
+  set('r-dr', fmtBytes(best.tot * rawMB));
+
+  // Draw mission plan canvases
+  drawMissionPlan('cv-pa', 'cap-a', aw, al, r, a, true);   // lines ∥ W (blue)
+  drawMissionPlan('cv-pb', 'cap-b', aw, al, r, b, false);  // lines ∥ L (green)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CANVAS: MISSION PLAN VIEW
+// Draws the survey rectangle with the lawnmower track to scale.
+// isAlongW=true → vehicle sweeps in W direction (lines ∥ Width, blue)
+// isAlongW=false → vehicle sweeps in L direction (lines ∥ Length, green)
+// ─────────────────────────────────────────────────────────────────────────────
+function drawMissionPlan(canvasId, capId, aw, al, r, orData, isAlongW) {
+  const cv = document.getElementById(canvasId);
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+
+  ctx.fillStyle = '#0a0c14';
+  ctx.fillRect(0, 0, W, H);
+
+  const { fw, fh, ls } = r;
+  const { nLines } = orData;
+  const col     = isAlongW ? '#4a9eff' : '#3ecf8e';
+  const colFill = isAlongW ? 'rgba(74,158,255,0.09)' : 'rgba(62,207,142,0.09)';
+
+  // Scale survey area to fit canvas
+  const mg = 32;
+  const availW = W - mg * 2, availH = H - mg * 2 - 14;
+  const sc = Math.min(availW / aw, availH / al, 40);  // cap px/m to 40
+  const rectW = aw * sc, rectH = al * sc;
+  const ox = mg + (availW - rectW) / 2;
+  const oy = mg + (availH - rectH) / 2;
+
+  // Survey area border
+  ctx.strokeStyle = '#3a4560'; ctx.lineWidth = 1.5;
+  ctx.strokeRect(ox, oy, rectW, rectH);
+
+  // Line centre positions in cross-track survey dimension
+  // First/last line centred fw/2 from the edge for full-edge coverage
+  const coverDim = isAlongW ? al : aw;
+  const step = nLines > 1 ? Math.max(0, coverDim - fw) / (nLines - 1) : 0;
+
+  // Draw swath footprint fills
+  ctx.fillStyle = colFill;
+  for (let i = 0; i < nLines; i++) {
+    const cPos = fw / 2 + i * step;  // centre of swath in cross-track dim
+    if (isAlongW) {
+      // Lines run horizontally; cPos is along al (vertical)
+      const y = oy + (cPos - fw/2) * sc;
+      const h = Math.min(fw * sc, rectH - (cPos - fw/2) * sc);
+      ctx.fillRect(ox, y, rectW, h);
+    } else {
+      // Lines run vertically; cPos is along aw (horizontal)
+      const x = ox + (cPos - fw/2) * sc;
+      const w = Math.min(fw * sc, rectW - (cPos - fw/2) * sc);
+      ctx.fillRect(x, oy, w, rectH);
+    }
+  }
+
+  // Draw lawnmower vehicle track
+  ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i < nLines; i++) {
+    const cPos = fw / 2 + i * step;
+
+    if (isAlongW) {
+      const py = oy + cPos * sc;
+      const goRight = i % 2 === 0;
+      if (i === 0) {
+        ctx.moveTo(goRight ? ox : ox + rectW, py);
+      } else {
+        // Turn: vertical move from previous line end to this line start
+        const prevCPos = fw / 2 + (i-1) * step;
+        const prevPy   = oy + prevCPos * sc;
+        const edgeX    = (i % 2 === 1) ? ox + rectW : ox;
+        ctx.lineTo(edgeX, py);  // turn (prev end → this start, same X edge)
+      }
+      ctx.lineTo(goRight ? ox + rectW : ox, py);  // traverse the swath
+
+    } else {
+      const px = ox + cPos * sc;
+      const goDown = i % 2 === 0;
+      if (i === 0) {
+        ctx.moveTo(px, goDown ? oy : oy + rectH);
+      } else {
+        const edgeY = (i % 2 === 1) ? oy + rectH : oy;
+        ctx.lineTo(px, edgeY);  // turn
+      }
+      ctx.lineTo(px, goDown ? oy + rectH : oy);  // traverse the swath
+    }
+  }
+  ctx.stroke();
+
+  // Start marker (green dot)
+  ctx.fillStyle = '#3ecf8e';
+  const startCPos = fw / 2;
+  const startX = isAlongW ? ox : ox + startCPos * sc;
+  const startY = isAlongW ? oy + startCPos * sc : oy;
+  ctx.beginPath(); ctx.arc(startX, startY, 4, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#3ecf8e'; ctx.font = '9px system-ui'; ctx.textAlign = 'left';
+  ctx.fillText('start', startX + 6, startY + 4);
+
+  // Dimension labels outside rectangle
+  ctx.fillStyle = '#8892b0'; ctx.font = '10px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText(f(aw,0) + ' m', ox + rectW/2, oy - 10);
+  ctx.save();
+  ctx.translate(ox - 16, oy + rectH/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText(f(al,0) + ' m', 0, 0);
+  ctx.restore();
+
+  // Swath count label inside rectangle
+  ctx.fillStyle = col; ctx.textAlign = 'right'; ctx.font = '10px system-ui';
+  ctx.fillText(`${nLines} swaths`, ox + rectW - 4, oy + 13);
+
+  // Scale bar below rectangle
+  const niceM = niceNum(aw * 0.3);
+  const barPx = niceM * sc;
+  ctx.fillStyle = '#5a6878';
+  ctx.fillRect(ox, oy + rectH + 8, Math.min(barPx, rectW), 2);
+  ctx.fillStyle = '#8892b0'; ctx.textAlign = 'left'; ctx.font = '9px system-ui';
+  ctx.fillText(niceM + ' m', ox, oy + rectH + 20);
+
+  // Update caption
+  const cap = document.getElementById(capId);
+  if (cap) {
+    const dir = isAlongW ? `Along Width — ${nLines} swaths × ${f(aw,0)} m` : `Along Length — ${nLines} swaths × ${f(al,0)} m`;
+    cap.textContent = dir;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CANVAS: OVERLAP VIEW (conceptual 3×4 grid)
+// ─────────────────────────────────────────────────────────────────────────────
+function drawOverlap(r) {
+  const cv = document.getElementById('cv-top');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.fillStyle = '#0a0c14'; ctx.fillRect(0, 0, W, H);
+
+  const { fw, fh, ls, td } = r;
+  const nS = 3, nI = 4;
+  const scW = (nS-1)*ls + fw, scH = (nI-1)*td + fh;
+  const mg = 44;
+  const sc = Math.min((W-mg*2)/scW, (H-mg*2)/scH);
+  const pw = fw*sc, ph = fh*sc, lsPx = ls*sc, tdPx = td*sc;
+  const ox = mg + ((W-mg*2) - scW*sc)/2;
+  const oy = mg + ((H-mg*2) - scH*sc)/2;
+
+  ctx.fillStyle = 'rgba(74,158,255,0.18)';
+  ctx.strokeStyle = 'rgba(74,158,255,0.5)'; ctx.lineWidth = 1;
+  for (let s = 0; s < nS; s++) {
+    for (let i = 0; i < nI; i++) {
+      const x = ox + s*lsPx, y = oy + i*tdPx;
+      ctx.fillRect(x, y, pw, ph); ctx.strokeRect(x, y, pw, ph);
+    }
+  }
+
+  // Labels
+  ctx.fillStyle = '#8892b0'; ctx.font = '11px system-ui'; ctx.textAlign = 'center';
+  const arX = ox + scW*sc/2;
+  ctx.fillText('direction of travel', arX, oy-26);
+  arrowH(ctx, arX-28, oy-18, arX+28, oy-18, '#8892b0');
+
+  ctx.fillStyle = '#f0b429'; ctx.font = '10px system-ui';
+  ctx.fillText('line spacing '+f(ls,2)+' m', ox+pw/2+lsPx/2, oy-6);
+  dashLine(ctx, ox+pw, oy-3, ox+lsPx, oy-3, '#f0b429');
+
+  ctx.save();
+  ctx.translate(ox+pw+20, oy+ph/2+tdPx/2);
+  ctx.rotate(Math.PI/2); ctx.fillStyle='#3ecf8e'; ctx.textAlign='center';
+  ctx.fillText('trig dist '+f(td,2)+' m', 0, 0);
+  ctx.restore();
+  dashLine(ctx, ox+pw+4, oy+ph, ox+pw+4, oy+tdPx, '#3ecf8e');
+
+  ctx.fillStyle = '#cdd5e0'; ctx.font = '10px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText(f(fw,2)+' m', ox+pw/2, oy+ph+14);
+  ctx.save(); ctx.translate(ox-10, oy+ph/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText(f(fh,2)+' m', 0, 0); ctx.restore();
+
+  ctx.fillStyle='#8892b0'; ctx.textAlign='left'; ctx.font='11px system-ui';
+  ctx.fillText(`Fwd ${getVal('fwd')}%   Side ${getVal('sid')}%`, 6, H-8);
+
+  const bm = fw, bpx = bm*sc, bx = W-8-bpx, by = H-14;
+  ctx.fillStyle='#8892b0'; ctx.fillRect(bx,by-2,bpx,2);
+  ctx.textAlign='center'; ctx.font='9px system-ui';
+  ctx.fillText(f(bm,1)+' m', bx+bpx/2, by+9);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CANVAS: SIDE PROFILE VIEW
+// ─────────────────────────────────────────────────────────────────────────────
+function drawSide(r, alt) {
+  const cv = document.getElementById('cv-side');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.fillStyle = '#0a0c14'; ctx.fillRect(0,0,W,H);
+
+  const seaY = H-36, camY = 30, camX = W/2;
+  ctx.strokeStyle='#5a6878'; ctx.lineWidth=2; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(12,seaY); ctx.lineTo(W-12,seaY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#5a6878'; ctx.font='10px system-ui'; ctx.textAlign='center';
+  ctx.fillText('seafloor', W/2, H-14);
+
+  ctx.fillStyle='#4a9eff'; ctx.fillRect(camX-11,camY-8,22,14);
+  ctx.fillStyle='#7cb8ff'; ctx.beginPath(); ctx.arc(camX,camY+6,6,0,Math.PI); ctx.fill();
+  ctx.fillStyle='#8892b0'; ctx.font='9px system-ui'; ctx.textAlign='center';
+  ctx.fillText(`HFOV ${r.ehfov.toFixed(0)}°`, camX, camY-14);
+
+  const altPx = seaY-camY-6, sc = altPx/alt;
+  const halfW = Math.min((r.fw/2)*sc, W/2-14);
+  ctx.strokeStyle='rgba(74,158,255,0.45)'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+  ctx.beginPath();
+  ctx.moveTo(camX,camY+6); ctx.lineTo(camX-halfW,seaY);
+  ctx.moveTo(camX,camY+6); ctx.lineTo(camX+halfW,seaY);
+  ctx.stroke(); ctx.setLineDash([]);
+
+  ctx.strokeStyle='#4a9eff'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(camX-halfW,seaY); ctx.lineTo(camX+halfW,seaY); ctx.stroke();
+
+  const ax = camX+halfW+10;
+  ctx.strokeStyle='#f0b429'; ctx.lineWidth=1; ctx.setLineDash([2,3]);
+  ctx.beginPath(); ctx.moveTo(ax,camY+6); ctx.lineTo(ax,seaY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#f0b429'; ctx.font='10px system-ui'; ctx.textAlign='left';
+  ctx.fillText(alt+' m', ax+4, (camY+seaY)/2+4);
+
+  ctx.fillStyle='#4a9eff'; ctx.textAlign='center';
+  ctx.fillText(f(r.fw,2)+' m', camX, seaY+17);
+  ctx.fillStyle='#8892b0'; ctx.font='9px system-ui';
+  ctx.fillText(`GSD ${f((r.gx+r.gy)/2,1)} mm/px`, camX, seaY+29);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COPY RESULTS
+// ─────────────────────────────────────────────────────────────────────────────
+function copyResults() {
+  if (!lastR) return;
+  const r = lastR;
+  const lines = [
+    `Survey Mission Calculator — Orpheus Ocean — ${new Date().toISOString().slice(0,10)}`,
+    `Camera: ${profile.name}  |  Altitude: ${r.alt} m  |  Speed: ${r.spd} m/s`,
+    `Fwd overlap: ${r.fwd}%  |  Side overlap: ${r.sid}%`,
+    ``,
+    `Footprint W (cross-track): ${f(r.fw,2)} m`,
+    `Footprint H (along-track): ${f(r.fh,2)} m`,
+    `GSD cross-track: ${f(r.gx,2)} mm/px`,
+    `GSD along-track: ${f(r.gy,2)} mm/px`,
+    `Line spacing: ${f(r.ls,2)} m`,
+    `Trigger distance: ${f(r.td,2)} m`,
+    `Trigger interval: ${r.ti ? f(r.ti,2)+' s' : '—'}`,
+    `Required fps: ${r.fps ? f(r.fps,2) : '—'}`,
+  ];
+  const aw = parseFloat(document.getElementById('aw-n').value);
+  const al = parseFloat(document.getElementById('al-n').value);
+  if (aw > 0 && al > 0) {
+    const ors = computeOrientations(aw, al, lastR, r.spd);
+    lines.push(``, `Survey area: ${aw} m × ${al} m`);
+    lines.push(`Lines ∥ Width:  ${ors.a.nLines} swaths × ${f(aw,0)} m = ${f(ors.a.dist,0)} m path, ${fmtTime(ors.a.time)}, ${ors.a.tot} photos`);
+    lines.push(`Lines ∥ Length: ${ors.b.nLines} swaths × ${f(al,0)} m = ${f(ors.b.dist,0)} m path, ${fmtTime(ors.b.time)}, ${ors.b.tot} photos`);
+    lines.push(`Recommended: ${ors.recA ? 'Lines ∥ Width' : 'Lines ∥ Length'}`);
+  }
+  navigator.clipboard.writeText(lines.join('\n'))
+    .then(() => { const b = event.target; b.textContent = 'Copied!'; setTimeout(()=>b.textContent='Copy Results',1400); });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+function set(id, v) { const el=document.getElementById(id); if (el) el.textContent=v; }
+function f(v, d=2) { return (isNaN(v)||v===null) ? '—' : Number(v).toFixed(d); }
+function fmtBytes(mb) { return mb<1024 ? f(mb,0)+' MB' : f(mb/1024,2)+' GB'; }
+function fmtTime(sec) {
+  if (!sec) return '—';
+  const m = sec/60;
+  return m < 60 ? f(m,0)+' min' : f(m/60,1)+' hr';
+}
+function niceNum(val) {
+  const m = Math.pow(10, Math.floor(Math.log10(Math.max(val,0.001))));
+  const n = val/m;
+  return m * (n<1.5?1 : n<3.5?2 : n<7.5?5 : 10);
+}
+function arrowH(ctx, x1, y1, x2, y2, col) {
+  const a = Math.atan2(y2-y1, x2-x1);
+  ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-8*Math.cos(a-.4), y2-8*Math.sin(a-.4));
+  ctx.lineTo(x2-8*Math.cos(a+.4), y2-8*Math.sin(a+.4));
+  ctx.closePath(); ctx.fill();
+}
+function dashLine(ctx, x1, y1, x2, y2, col) {
+  ctx.strokeStyle=col; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); ctx.setLineDash([]);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

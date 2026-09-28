@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plymouth AUV Tide Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="header-left">
+      <h1>Plymouth AUV Tide Tracker</h1>
+      <div class="site-name" id="siteName">Loading…</div>
+    </div>
+    <div class="header-right">
+      <div id="clockDisplay">--:--</div>
+      <div id="dateDisplay"></div>
+      <div id="lastUpdated">Contacting NOAA…</div>
+      <div id="stationInfo"></div>
+    </div>
+  </header>
+
+  <nav class="page-tabs">
+    <span class="tab active">Daily Status</span>
+    <a href="week.html" class="tab">Weekly Planning</a>
+  </nav>
+
+  <main>
+
+    <!-- ── Status indicator + stats ── -->
+    <section class="status-section">
+      <div class="status-indicator" id="statusIndicator">
+        <div class="status-light" id="statusLight"></div>
+        <div id="statusLabel">—</div>
+        <div id="statusReason" class="status-reason"></div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Current Depth</div>
+          <div class="stat-value" id="currentDepth">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Required</div>
+          <div class="stat-value" id="requiredDepth">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Clearance</div>
+          <div class="stat-value" id="clearance">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" id="nextEventLabel">Next Change</div>
+          <div class="stat-value" id="nextEvent">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Today's testing windows ── -->
+    <section class="windows-section">
+      <div class="section-title">Today's Testing Windows</div>
+      <div id="windowsList">
+        <div class="msg loading">Fetching tide data from NOAA…</div>
+      </div>
+    </section>
+
+    <!-- ── Weather panel ── -->
+    <section class="weather-section">
+      <div class="section-title">Weather · Cape Cod Bay</div>
+      <div class="wx-row" id="wxRow">
+        <div class="wx-item">
+          <span class="wx-label">Wind</span>
+          <span class="wx-value" id="wxWind">—</span>
+          <span class="wx-sub"  id="wxWindDir">—</span>
+        </div>
+        <div class="wx-divider"></div>
+        <div class="wx-item">
+          <span class="wx-label">Gusts</span>
+          <span class="wx-value" id="wxGust">—</span>
+        </div>
+        <div class="wx-divider"></div>
+        <div class="wx-item wx-item-wide">
+          <span class="wx-label">Conditions</span>
+          <span class="wx-value" id="wxCond">—</span>
+        </div>
+        <div class="wx-alerts" id="wxAlerts"></div>
+      </div>
+    </section>
+
+    <!-- ── Tide chart ── -->
+    <section class="chart-section">
+      <div class="section-title">Tide Forecast — Water Depth at Test Site</div>
+      <canvas id="tideChart"></canvas>
+    </section>
+
+    <!-- ── Vehicle settings ── -->
+    <section class="settings-section">
+      <details>
+        <summary>Vehicle &amp; Depth Settings</summary>
+        <div class="settings-grid">
+
+          <div class="setting-item">
+            <label for="draftNum">Vehicle Draft</label>
+            <div class="input-row">
+              <input type="number" id="draftNum" min="1" max="120" step="1" value="37">
+              <span class="unit-label">inches</span>
+            </div>
+            <input type="range" id="draftRange" min="1" max="120" step="1" value="37">
+          </div>
+
+          <div class="setting-item">
+            <label for="marginNum">Safety Margin</label>
+            <div class="input-row">
+              <input type="number" id="marginNum" min="0" max="24" step="1" value="4">
+              <span class="unit-label">inches</span>
+            </div>
+            <input type="range" id="marginRange" min="0" max="24" step="1" value="4">
+          </div>
+
+          <div class="setting-item">
+            <label>Minimum Required Depth</label>
+            <div class="calc-value" id="minDepthCalc">— ft</div>
+          </div>
+
+        </div>
+      </details>
+    </section>
+
+  </main>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

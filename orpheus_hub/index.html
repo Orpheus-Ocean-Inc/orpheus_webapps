@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orpheus Ocean | Operations Hub</title>
+<style>
+  :root {
+    --bg:      #0d0f14;
+    --surface: #1a1d24;
+    --border:  #2e3340;
+    --accent:  #e86b2a;
+    --accent2: #f0a05a;
+    --text:    #e8eaf0;
+    --muted:   #7a8099;
+    --success: #3dba72;
+    --warn:    #f5c542;
+    --danger:  #e85a5a;
+    --radius:  8px;
+    --font:    'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 15px; min-height: 100vh; }
+
+  header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .logo {
+    width: 40px; height: 40px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 18px; color: #fff; flex-shrink: 0;
+  }
+  .header-text h1 { font-size: 20px; font-weight: 700; letter-spacing: .02em; }
+  .header-text p  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .container { max-width: 860px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  .section { margin-bottom: 36px; }
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--muted);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    text-decoration: none;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: border-color .15s, background .15s, transform .1s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card:hover {
+    border-color: var(--accent);
+    background: #1e2230;
+    transform: translateY(-1px);
+  }
+  .card::after {
+    content: '→';
+    position: absolute;
+    right: 18px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--border);
+    font-size: 18px;
+    transition: color .15s, right .15s;
+  }
+  .card:hover::after { color: var(--accent); right: 14px; }
+
+  .card-phase {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-bottom: 2px;
+    width: fit-content;
+  }
+  .phase-1 { background: #3a1f10; color: var(--accent); }
+  .phase-2 { background: #2e2710; color: var(--warn); }
+  .phase-3 { background: #0f2e1a; color: var(--success); }
+  .phase-eng { background: #10182e; color: #7ab0f5; }
+  .phase-res { background: #1e1a2e; color: #b07af5; }
+
+  .card-title { font-size: 15px; font-weight: 600; padding-right: 28px; }
+  .card-desc  { font-size: 12px; color: var(--muted); line-height: 1.4; padding-right: 28px; }
+
+  .notice {
+    background: #1a1710;
+    border: 1px solid #3a3010;
+    border-left: 3px solid var(--warn);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 36px;
+  }
+  .notice strong { color: var(--warn); }
+
+  footer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--border);
+    padding: 24px;
+    border-top: 1px solid var(--border);
+    margin-top: 16px;
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 16px 20px; gap: 14px; }
+    .header-text h1 { font-size: 17px; }
+    .container { padding: 24px 16px 48px; }
+    .cards { grid-template-columns: 1fr; }
+    .card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">O</div>
+  <div class="header-text">
+    <h1>Orpheus Ocean</h1>
+    <p>Operations &amp; Testing Hub</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="notice">
+    <strong>Access note:</strong> If a form shows "unable to open" on your phone, open the link in an <strong>incognito / private window</strong>. This happens when Chrome is signed into a personal Google account alongside the Orpheus workspace.
+  </div>
+
+  <div class="section">
+    <div class="section-label">Dive Checklist Forms</div>
+    <div class="cards">
+
+      <a class="card" href="https://script.google.com/macros/s/AKfycbwPEfJWEW0oL5UOSh2jdgZLN8gdvswmHOC1YHAYDuNl77IDJQIgesgaj6SXpVfufi16/exec?phase=predive" target="_blank">
+        <span class="card-phase phase-1">Phase 1</span>
+        <span class="card-title">Pre-Dive Checklist</span>
+        <span class="card-desc">Vehicle condition, weight dropper, mission data. Creates the dive record.</span>
+      </a>
+
+      <a class="card" href="https://script.google.com/macros/s/AKfycbwPEfJWEW0oL5UOSh2jdgZLN8gdvswmHOC1YHAYDuNl77IDJQIgesgaj6SXpVfufi16/exec?phase=prelaunch" target="_blank">
+        <span class="card-phase phase-2">Phase 2</span>
+        <span class="card-title">Pre-Launch Checklist</span>
+        <span class="card-desc">Deck-side checks, software pre-launch, functionality confirmed, final steps.</span>
+      </a>
+
+      <a class="card" href="https://script.google.com/macros/s/AKfycbwPEfJWEW0oL5UOSh2jdgZLN8gdvswmHOC1YHAYDuNl77IDJQIgesgaj6SXpVfufi16/exec?phase=postdive" target="_blank">
+        <span class="card-phase phase-3">Phase 3</span>
+        <span class="card-title">Post-Dive Report</span>
+        <span class="card-desc">Immediate procedure, functionality checks, notes. Closes the dive record.</span>
+      </a>
+
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Engineering &amp; Testing</div>
+    <div class="cards">
+
+      <a class="card" href="https://script.google.com/macros/s/AKfycbwPEfJWEW0oL5UOSh2jdgZLN8gdvswmHOC1YHAYDuNl77IDJQIgesgaj6SXpVfufi16/exec?phase=testing" target="_blank">
+        <span class="card-phase phase-eng">Operator</span>
+        <span class="card-title">Test Logger</span>
+        <span class="card-desc">Log individual test entries with PASS / FAIL / PARTIAL, rosbag filenames, and notes.</span>
+      </a>
+
+      <a class="card" href="https://script.google.com/macros/s/AKfycbwPEfJWEW0oL5UOSh2jdgZLN8gdvswmHOC1YHAYDuNl77IDJQIgesgaj6SXpVfufi16/exec?phase=testplan" target="_blank">
+        <span class="card-phase phase-eng">Engineer</span>
+        <span class="card-title">Test Plan Builder</span>
+        <span class="card-desc">Build structured test plans pre-dive. Assign items by category and type.</span>
+      </a>
+
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Resources</div>
+    <div class="cards">
+
+      <a class="card" href="https://ben-orpheus.github.io/PlymouthTideTracker/" target="_blank">
+        <span class="card-phase phase-res">Tides</span>
+        <span class="card-title">Plymouth Tide Tracker</span>
+        <span class="card-desc">Live and forecast tide data for Plymouth. Use to plan dive timing.</span>
+      </a>
+
+      <a class="card" href="https://www.notion.so" target="_blank">
+        <span class="card-phase phase-res">Data</span>
+        <span class="card-title">Notion Workspace</span>
+        <span class="card-desc">Dive Checklists, Cruises, Test Plans, and Test Plan Items databases.</span>
+      </a>
+
+    </div>
+  </div>
+
+</div>
+
+<footer>Orpheus Ocean Testing System &mdash; Operations Hub</footer>
+
+</body>
+</html>
