@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Waypoint selector</title>
+  <title>Waypoint Selector</title>
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 
@@ -157,6 +157,42 @@
     }
     .field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .actions-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .field select {
+      font: inherit;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--field);
+      color: var(--ink);
+      width: 100%;
+    }
+    .field select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    .mission {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--field);
+    }
+    .mission-duration {
+      display: flex;
+      flex-wrap: wrap;
+      column-gap: 20px;
+      row-gap: 4px;
+      align-items: baseline;
+      background: var(--accent);
+      color: var(--accent-ink);
+      border-radius: 6px;
+      padding: 12px 14px;
+    }
+    .mission-pair { display: flex; gap: 6px; align-items: baseline; white-space: nowrap; }
+    .mission-label { font-size: 0.78rem; font-weight: 600; opacity: 0.85; }
+    .mission-duration .value { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
     #bboxInfo, #gridEstimate { margin: 0; color: var(--muted); font-size: 0.8rem; line-height: 1.4; }
 
     .paste-area {
@@ -203,7 +239,7 @@
 
   <aside>
     <div>
-      <h1>Waypoint selector</h1>
+      <h1>Waypoint Selector</h1>
       <p class="hint">Click the map to add a waypoint. Drag a pin to adjust it. Click a pin to delete it.</p>
     </div>
 
@@ -222,6 +258,33 @@
     </div>
     <div id="distanceList" class="dist-list" aria-label="Distance between consecutive waypoints">
       <p class="dist-empty">Add waypoints to see distances.</p>
+    </div>
+
+    <div class="mission">
+      <div class="coord-row">
+        <label class="field">
+          <span>Speed</span>
+          <input type="number" id="speedInput" step="any" min="0" placeholder="e.g. 5">
+        </label>
+        <label class="field">
+          <span>Unit</span>
+          <select id="speedUnit">
+            <option value="mps">m/s</option>
+            <option value="kmh">km/h</option>
+            <option value="mph">mph</option>
+          </select>
+        </label>
+      </div>
+      <div class="mission-duration">
+        <span class="mission-pair">
+          <span class="mission-label">mission_duration:</span>
+          <span class="value" id="durationValue">&mdash;</span>
+        </span>
+        <span class="mission-pair">
+          <span class="mission-label">given speed:</span>
+          <span class="value" id="speedValueDisplay">&mdash;</span>
+        </span>
+      </div>
     </div>
 
     <div class="actions">
@@ -363,6 +426,10 @@
         loadFileInfo: document.getElementById("loadFileInfo"),
         pasteArea: document.getElementById("pasteArea"),
         addPasted: document.getElementById("addPasted"),
+        speedInput: document.getElementById("speedInput"),
+        speedUnit: document.getElementById("speedUnit"),
+        durationValue: document.getElementById("durationValue"),
+        speedValueDisplay: document.getElementById("speedValueDisplay"),
       };
 
       // ---------- basemaps (from config.js) ----------
@@ -524,10 +591,14 @@
         return m >= 1000 ? (m / 1000).toFixed(2) + " km" : m.toFixed(1) + " m";
       }
 
+      let totalRouteMeters = 0;
+
       function renderDistances() {
         if (!markers.length) {
           els.distanceList.innerHTML = '<p class="dist-empty">Add waypoints to see distances.</p>';
           els.totalDistance.textContent = "";
+          totalRouteMeters = 0;
+          updateMissionDuration();
           return;
         }
         let total = 0;
@@ -547,7 +618,51 @@
         });
         els.distanceList.innerHTML = rows.join("");
         els.totalDistance.textContent = markers.length > 1 ? "Total: " + formatDistance(total) : "";
+        totalRouteMeters = total;
+        updateMissionDuration();
       }
+
+      // ---------- mission duration = total route distance / given speed ----------
+      function speedToMps(value, unit) {
+        if (unit === "kmh") return value / 3.6;
+        if (unit === "mph") return value * 0.44704;
+        return value; // m/s
+      }
+
+      function formatDuration(totalSeconds) {
+        const s = Math.max(0, Math.round(totalSeconds));
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        const parts = [];
+        if (h) parts.push(h + "h");
+        if (h || m) parts.push(m + "m");
+        parts.push(sec + "s");
+        return parts.join(" ");
+      }
+
+      function updateMissionDuration() {
+        const rawSpeed = Number(els.speedInput.value);
+        const unit = els.speedUnit.value;
+        const unitLabel = unit === "kmh" ? "km/h" : unit === "mph" ? "mph" : "m/s";
+
+        if (!Number.isFinite(rawSpeed) || rawSpeed <= 0) {
+          els.durationValue.textContent = "\u2014";
+          els.speedValueDisplay.textContent = "\u2014";
+          return;
+        }
+        els.speedValueDisplay.textContent = rawSpeed + " " + unitLabel;
+
+        if (totalRouteMeters <= 0) {
+          els.durationValue.textContent = "\u2014";
+          return;
+        }
+        const mps = speedToMps(rawSpeed, unit);
+        els.durationValue.textContent = mps > 0 ? formatDuration(totalRouteMeters / mps) : "\u2014";
+      }
+
+      els.speedInput.addEventListener("input", updateMissionDuration);
+      els.speedUnit.addEventListener("change", updateMissionDuration);
 
       function pinIcon(n) {
         return L.divIcon({
